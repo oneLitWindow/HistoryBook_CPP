@@ -1,0 +1,84 @@
+Key of algorithm: weight between 2 sets  
+Tentative and fixed sets are key technology for graph theory.
+ 
+Steps of graph algorithm: 
+At beginning, all nodes are added to tentative set and fixed set is empty. 
+Move one special node into fixed set according to purpose of algorithm (initialize - refer to example bellow) 
+In the moment, there is only one node (special node) in fixed set.
+find minimum value between all nodes in tentative set to the special node in fixed set,  then move the node, which owns the minimum value, from tentative set to fixed set. 
+In the moment, there are 2 nodes in fixed set.
+find minimum value between all nodes in tentative set to the 2 nodes in fixed set,  then move the node, which owns the minimum value, from tentative set, to fixed set.  
+In the moment, there are 3 nodes in fixed set.
+find minimum value between all nodes in tentative set to the 3 nodes in fixed set,  then move the node, which owns the minimum value, from tentative set to fixed set.  
+And so on until purpose of graph algorithm reaches (such as finding target node).
+  
+Please note: 
+Steps 3, 4, 5 and 6 above are the same, which calculate minimum value between the 2 sets - or minimum value between all nodes in one set to all nodes in another set.
+Those steps must be in a programming loop, such as while() or do.
+Many people think step 2 belongs to the loop also. 
+  
+Example: find shortest path from node A to M 
+First of all, we define a struct for all node:
+struct Path 
+{ 
+char chNode;  //the node 
+char chNodePrevious;  //the node's previous node 
+int iWeightToStart; //total weight to target node 
+
+};
+ 
+The struct is initialized as, for example,  
+node H: {H,0,infinite).
+node B: {B,0,infinite}. 
+Infinite is a very large number, which can be initialized as zero rather than infinite, but most people like to use infinite.
+  
+Steps: (refer to previous steps) 
+Initialize all nodes for struct Path as described above.
+Field chNodePrevious is used as flag also to identify if the node is in tentative set (if the field is zero) or in fixed set (if the field is non-zero).
+So all nodes are in tentative set and fixed set is empty in the moment. 
+Move node A to fixed set (initializing) by setting its field 
+chNodePrevious=A; and iWeightToStart=0; 
+Find minimum weight between 2 sets and related node in tentative set,  which is F
+Set fields of node F as: 
+chNodePrevious=A;  //because it is related to node A of fixed set.
+iWeightToStart=0+5; //0 is node A's value of the field, 5 is its weight to node A 
+In the moment, fixed set has 2 nodes: A and F
+Calculate minimum value between 2 sets, or enumerate all nodes in tentative set to all nodes in fixed set to find minimum value and related node.
+Value is defined as, for example, B to A is:
+value = A's  iWeightToStart + wight of B to A.
+So the node found in tentative set is H, then set fields of node H as 
+chNodePrevious=A;  //because it is related to node A of fixed set.
+iWeightToStart=0+8; //0 is node A's value of the field, 8 is weight of H to A 
+In the moment, fixed set has 3 nodes: A, F and H 
+Enumerate again between 2 sets, node G in tentative set is found,  then set its fields as 
+chNodePrevious=H;  //because it is related to node H of fixed set.
+iWeightToStart=8+4; //8 is node H's value of the field, 4 is weight of G to H 
+
+Enumerate again and again as above, finally, node M is moved to fixed set.
+Currently nodes and fields in 2 sets are:
+Fixed A(A,0) B(A,12) E(E,23) F(A,5) H(A,8) G(H,12)   M(G,25) 
+Tentative             K(0,inf)    
+OK, we can say:
+Shortest path between A and M is: M--G--H--A, weight is 25.
+ 
+Please note: 
+process above should be backward (initialize node M first), but it doesn't matter for the example. 
+shortest-path may not be unique. 
+
+Source code and command line 
+For simplifying program code, the program simply add 26 nodes from A to Z, even some nodes may not exist in vertex-edge tree.
+There is another field iExist in struct Path above, which is used as flag to identify if a node exists. 
+For example, the filed for node Z in picture above is zero to identify the node does not exist in the pictue.
+If without the flag, we have to dynamically create nodes according to number of nodes in graph, which will increase a little complex for coding. 
+If you unzip files downloaded, you will see 3 files in output directory: 
+data.txt
+which defines graph tree, each line in the file defines weight between 2 nodes, such as 
+A,H,8: A and H are nodes, 8 is weight between them.
+You can modify the file, but only A to Z can be used for nodes. 
+project.exe
+Executable file of source code compiled under DOS environment. 
+run.bat
+You can run executable file (project.exe) by double-clicking the file under Windows.
+Text inside the file is command line for running executable file. 
+Directed graphs  
+Programming for directed graphs is the same as for undirected graphs as described above, only difference is that weight has "direction", i.e. weight from node A to B may be different as from B to A. 

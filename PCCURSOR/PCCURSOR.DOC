@@ -1,0 +1,66 @@
+
+	PCcursor.cpp for Borland C++
+	============================
+
+
+	Thank you for downloading pccursor.zip.  The 
+	CursorShape class provides you with an easy way to
+	control the cursor shapes in multiple windows of
+	your program and insure that the original shape(s)
+	are restored thanks to destructors.
+
+	Compile and run pccursor.cpp.  The demo will show
+	the various cursor shapes.  The source code shows
+	how to call CursorShape member functions.  To
+	use pccursor.cpp in your application be sure to
+	comment out "#define TEST_PCCURSOR_CPP" near the end
+	of the file.
+
+
+
+	Registration
+	============
+
+	If you find pccursor useful and are using it in your
+	applications, tell your friends.  You don't need to
+	register pccursor -- it's freeware!  All I ask is
+	that you leave my copyright notice intact!
+
+
+
+	Other Freeware Goodies available for Borland C++
+	================================================
+
+
+	pckey		PC keyboard class w/auto enhanced
+	gconio          Graphics mode conio class
+	cmouse          Mouse Driver class w/ intr handler
+	cmdln		Command line parser class
+
+
+
+	And Shareware
+	=============
+
+
+	FlexList II ANSI && K&R C
+	FlexList II C++
+
+		* Ready-to-run C/C++ linked lists.
+		* Hybrid structure: stack,queue,list,array.
+		* Stores Heterogeneous/homogeneous data
+		* Eliminates the need for parameterized list
+			templates such as are proposed for
+			C++ in the future.
+
+
+	Thanks again!
+
+
+	John W. Small
+	CIS: 73757,2233
+
+	PSW / Power SoftWare
+	P.O. Box 10072
+	McLean, VA 22102 8072
+	USA (703) 759-3838

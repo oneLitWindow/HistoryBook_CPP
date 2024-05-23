@@ -1,0 +1,59 @@
+
+                          Mouse++ Version 4.0
+
+                  Copyright (c)1992 by Carl Moreland
+                               10/05/92
+
+-----------------------------------------------------------------------
+
+    Mouse++ is a mouse interface class for Borland C++ or TurboC++. The
+distributed files are:
+
+	mouse.h		header file for Mouse++
+	mouse.cpp	source code for Mouse++
+	cgc.cpp		source for ColorGraphicsCursors
+	cgc_bgi.cpp	BGI version of ColorGraphicsCursors
+	cursor.h	text & graphic cursor definitions
+	mouse.lib	library of all mouse functions (large model)
+	demo.cpp	text/graphics demo
+	mouse.doc	documentation file
+	mouse.his	revision history
+	readme		this file
+
+A demonstration of most of the functions for both text mode and gra-
+phics (EGA/VGA) mode is contained in demo.cpp. To run the demo, simply 
+compile and link it with mouse.lib (you will also need EGAVGA.BGI for 
+the graphics demo).
+
+-----------------------------------------------------------------------
+This software may be distributed and used according to the following
+rules:
+
+- You may modify this software in any way you see fit and use it for
+  any purpose you wish, including use in software that is sold for pro-
+  fit. You may NOT include any source code of this software with any
+  program that is sold for any fee.
+
+- All distributed copies of this software MUST be original and unmodi-
+  fied and include all files listed above.
+
+- You may NOT charge any fee for this software, including any distribu-
+  tion fee, without written permission from the author, except for the
+  case of electronic bulletin boards which normally charge for connect
+  time.
+
+- The author retains all rights to the source code and to the name
+  "Mouse++".
+
+If you find Mouse++ useful, a $15 contribution would be greatly appre-
+ciated. Comments, suggestions, and bug reports are also welcomed. Send 
+them to:
+
+	Carl Moreland
+	4314 Filmore Rd
+	Greensboro, NC 27409
+
+	Internet: carl.moreland@analog.com
+	CompuServe: (72137,2657)
+
+-----------------------------------------------------------------------

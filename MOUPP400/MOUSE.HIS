@@ -1,0 +1,147 @@
+
+                       Mouse++ Revision History
+
+                  Copyright (c)1992 by Carl Moreland
+                               10/05/92
+
+-----------------------------------------------------------------------
+
+Version 4.0
+
+- Now supports hold-and-repeat for mouse buttons. A repeat delay,
+  repeat rate, and button mask can be set; any valid mouse button that
+  is held down longer than the repeat delay will generate PRESSED
+  events at the repeat rate. Support functions are:
+
+  SetRepeatRate()	sets the mask, delay & rate
+
+- New EventHandler class makes creating and swapping event handlers a
+  little easier. Support functions are:
+
+  InstallHandler()	now accepts an EventHandler object
+
+- New ColorGraphicsCursors - these are defined by a background mask and
+  masks for the four video bit planes. CGC's are currently supported
+  only for 640x350x16 EGA & 640x480x16 VGA. All routines related to
+  drawing the cursor are located in cgc.cpp. These routines are written
+  entirely in C++ and contain no assembly. Therefore, they are not the
+  fastest in the world, but my intention was to show how the algorithm
+  works and just get the basics working. The best solution to drawing
+  CGC's is to use the bitblt routines that come with whatever graphics
+  library you are using. Support functions are:
+
+  SetCursor()		accepts a ColorGraphicsCursor
+
+- All cursors are now set up via a class constructor instead of simply
+  declaring the structure contents. The CGC's require the constructor,
+  therefore the text & graphics cursors were converted to use construc-
+  tors for uniformity. Graphics cursors now require a width & height
+  (in pixels) in the constructor. These are used in Exclude() for turn-
+  ing off the cursor. See cursor.h for examples.
+
+- MultiClick detection can now handle multiple button multiclicks. The
+  Repeater cannot handle multiple button repeats, and will give the
+  left button first priority, right button second priority, and the
+  center button last priority.
+
+- Misc. internal improvements made to the mouse class and event hand-
+  ler. Additions are:
+
+  x()			same as xPos()
+  y()			same as yPos()
+  xyLimit()		sets both x & y-limits in one function call
+  LB_EVENT		same as (LB_PRESSED|LB_RELEASED)
+  RB_EVENT		same as (RB_PRESSED|RB_RELEASED)
+  CB_EVENT		same as (CB_PRESSED|CB_RELEASED)
+  MB_PRESSED		same as (LB_PRESSED|RB_PRESSED|CB_PRESSED)
+  MB_RELEASED		same as (LB_RELEASED|RB_RELEASED|CB_RELEASED)
+  MB_EVENT		same as (MB_PRESSED|MB_RELEASED)
+
+-----------------------------------------------------------------------
+
+Version 3.1
+
+- Support for multiple video pages added. New functions are:
+
+  GetVideoPage()	gets the video page that the cursor is dis-
+			played on
+  SetVideoPage()	sets the video page for displaying the cursor
+
+  Neither of these functions have anything to do with what video page
+  is actually being displayed on the screen. They are only associated
+  with the page that the mouse cursor is active on. The above functions
+  work in both text & graphics modes.
+
+- SetTextCursor() and SetGraphicsCursor() have both been renamed
+  SetCursor(). You should rename all calls to these two functions to
+  the new name. This version of Mouse++ will still accept the old func-
+  tion names for compatibility but future versions will not.
+
+-----------------------------------------------------------------------
+
+Version 3.0
+
+- Major upgrade. Some existing method implementations changed. All
+  mouse driver calls are now performed with geninterrupt() for improved
+  speed.
+
+- Finally! Documentation is furnished.
+
+- Event buffer added. All mouse events are stored in the buffer via the
+  event handler and later copied to class variables with GetEvent().
+  New functions:
+
+  InstallHandler()	replaces the old Event() function
+  ClearHandler()	disables the event handler
+  GetEvent()		gets the next event from the buffer
+  ClearEvent()		clears the current event
+  ClearBuffer()		clears the event buffer
+
+- Support for shift keys added. Events such as <Ctrl><LeftButton> can
+  be detected.
+
+- MultiClick detection enhanced. New functions:
+
+  SetClickThreshold()	sets the multi-click detection threshold
+  ClearClick()		clears the multi-click buffer
+
+- Enable() & Disable() functions added turn the mouse (and the event
+  handler) on and off interactively.
+
+- Default event handler function now provided.
+
+-----------------------------------------------------------------------
+
+Version 2.0
+
+- Rewrite of the interface with better naming conventions.
+
+- MultiClick detection added. New functions:
+
+  DoubleClick()		detects double-clicks
+  MultiClick()		detects n-clicks
+
+-----------------------------------------------------------------------
+
+Version 1.1
+
+- Minor bug fixes.
+
+-----------------------------------------------------------------------
+
+Version 1.0
+
+- Initial release. Limited event driven capability.
+
+-----------------------------------------------------------------------
+
+Comments, suggestions, and bug reports are welcomed. Send them to:
+
+        Carl Moreland
+        4314 Filmore Rd
+        Greensboro, NC 27409
+
+	Internet: carl.moreland@analog.com
+	CompuServe: (72137,2657)
+
+-----------------------------------------------------------------------

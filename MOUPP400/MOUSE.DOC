@@ -1,0 +1,1213 @@
+
+                          Mouse++ Version 4.0
+
+                  Copyright (c)1992 by Carl Moreland
+                               10/06/92
+
+-----------------------------------------------------------------------
+
+Using the Mouse Class
+
+    To  incorporate  the  mouse routines in your  program,  simply  add
+mouse.lib to your project or make file and #include mouse.h in any  mo-
+dule that calls a mouse function.  mouse.lib contains all the functions
+in mouse.cpp and cgc.cpp,  but the functions are separated into differ-
+ent object modules for greater efficiency.  Note that mouse.lib is com-
+piled for the large memory model.
+
+    An instance of the Mouse class (there can only be ONE instance)  is 
+declared as extern in mouse.h,  so any file that #includes mouse.h will 
+automatically have access to the mouse.  You should NOT declare an  in-
+stance of the Mouse class in any part of your program. If you intend to
+change the mouse cursor, then you also need to #include cursor.h.
+
+    When you link the mouse code into your program,  an instance of the
+mouse class is declared:
+
+	Mouse mouse;
+
+The  constructor Mouse::Mouse() calls the mouse driver  reset  function
+(all mouse driver functions are called via interrupt 33h)  and  initia-
+lizes  the flags exists, enabled, and visible.  exists is set to 1 if a
+mouse  was  found and should be checked first.  All other  mouse  class
+functions check exists before issuing interrupt 33h calls and abort  if
+it  is zero.  enabled is initially zero meaning the mouse is  disabled,
+and  visible is used by Show() and Hide() to keep track of  the  cursor
+visibility. An example of initializing the mouse is:
+
+	#include "mouse.h"
+
+	main()
+	{
+	  if(mouse.Exists())		// check for mouse
+	  {
+	    mouse.Enable();		// enable the mouse
+	    mouse.Show();		// display the cursor
+	    ...
+	  }
+	}
+
+Again,  including  mouse.h automatically creates  an  instance  of  the
+class, so all you have to do is start using it.
+
+    Once  the  mouse is initialized,  it may be necessary to  set  some
+parameters based on what video mode is being used. Strangely, the mouse
+driver  uses  pixel coordinates for both text and graphics  mode,  with
+(0,0)  being  the upper left hand corner of the screen,  and  (639,199)
+being  the default lower right hand corner.  This would be correct  for
+CGA graphics mode and for normal 80x25 text mode - for text mode,  this
+means that each character cell is treated as an 8x8 pixel array. If you
+are programming for the EGA or VGA as is the norm these days,  you will
+want  to change the y-limit of 199 for high resolution graphics and  43
+or 50 line text modes.  Failure to do this means that the mouse  cursor
+will not move below the 200th line in graphics mode, or the 25th row in
+text mode.  (Older mouse drivers might not support more than 200 lines.
+If  this is the case,  you will need to update your mouse driver.)  For
+640x480 VGA graphics, you need to set the y-limit to (0,479) by calling
+yLimit(0,479).  For  43 or 50 line text mode,  the mouse  driver  still
+treats  each character cell as an 8x8 pixel array,  so you need to  set
+the  y-limit  to (0,349) or (0,399), respectively.  Since  the  default
+width  of 640 pixels is correct for most video modes,  xLimit() is only
+necessary  when using SuperVGA graphics.  (See the section on  SuperVGA
+support) Both xLimit() and yLimit() can also be used to limit the mouse
+cursor to a small portion of the screen, such as a menu.
+
+    You  may want to use a mouse cursor other than the default  cursor.
+To do this,  call the function SetCursor() with the appropriate  cursor
+name.  Many programs (especially graphics) will use  several  different
+cursors  depending on the location of the mouse (such as an  arrow  for
+menus  and  an i-beam for text) or the particular function  being  pro-
+cessed (such as an hourglass for wait).  Several cursors are predefined
+in the file cursor.h.  To use them,  simply include this header file in
+whatever  module changes the cursor.  For more information on  cursors,
+see the Mouse Cursors section.
+
+    Finally,  you may want to set the motion parameters,  which include
+the  mickey-to-pixel ratio and the double-speed threshold.  The mickey-
+to-pixel  ratio  is set by MickToPix() and defines how many mickeys  it
+takes  to move the mouse 8 pixels.  (A mickey is single count of  mouse
+motion. Most mice are 200 "dots-per-inch", which means that one inch of
+movement  results in 200 mickeys.)  If both the x and y parameters  are
+set  to 8,  then there will be a one-to-one correlation  between  mouse
+motion  and cursor motion.  The default values are 8 in the  horizontal
+direction and 16 for the vertical.  The vertical value of 16 means  the
+mouse must be moved twice as far vertically as horizontally to  get the
+same cursor movement.  This is fine for text mode where the  equivalent
+screen  resolution  of 640x200 results in an  equivalent  pixel  aspect
+ratio of 2.4-to-1.  In EGA/VGA graphics mode the y-direction will  seem
+noticeably  slower,  particularly for 640x480 which has  an  equivalent
+pixel  aspect ratio of 1-to-1.  A vertical ratio of 8 will  cure  this.
+The lower the ratio, the farther the cursor will move for a given mouse
+movement.  Setting either ratio lower than 8 means that the cursor can-
+not be located on every pixel. For example, setting the ratio to 4 will
+cause  the cursor to move 2 pixels for every mickey.  The  double-speed
+threshold  is set by a call to SetSpeedThreshold().  When the speed  of
+the mouse (in mickeys per second) exceeds the speed parameter passed to
+SetSpeedThreshold(), the motion speed of the cursor will double. A com-
+plete initialization might look like this:
+
+	#include "mouse.h"
+	#include "cursor.h"
+
+	main()
+	{
+	  { initialize screen };
+	  if(mouse.Exists())
+	  {
+	    mouse.SetCursor(cross);
+	    mouse.yLimit(0,479);	// VGA 640x480
+	    mouse.MickToPix(8,8);
+	    mouse.SetSpeedThreshold(32);
+	    mouse.Enable();
+	    mouse.Show();
+	    ...
+	  }
+	}
+
+    The  mouse should be reset before your program terminates  so  that
+the  calling program does not inherit any strange parameters.  This  is
+particularly true of the event handler. Because it is an interrupt rou-
+tine,  failure to reset the mouse could lead to a system crash  if  the
+handler is still pointing to the address of what used to be your  hand-
+ler routine. The destructor Mouse::~Mouse() first resets the mouse sta-
+tus by calling function 00h, and then restores the original event hand-
+ler with function 14h.
+
+-----------------------------------------------------------------------
+
+Reading the Mouse
+
+    Most  of the standard mouse functions stuff any return  values  di-
+rectly  into the class variables and have a return type void.  This  is
+because many mouse functions return more than one item of  information.
+You  can then use the appropriate inline function to read the  required
+private  variable.  To check for the mouse position, for instance,  you
+would call Position() followed by either x() or y(), or both, such as:
+
+	for(;;)
+	{
+	  mouse.Position();
+	  if(mouse.x() > 320 || mouse.y() > 100)
+	    do_something();
+	}
+
+This  method has the advantage of capturing both the x and y  positions
+with  a single function call,  and those variables can then be read  at
+your  leisure.  However,  we generally don't care where  the  mouse  is
+located  unless  a button event that we are looking for  has  occurred.
+Position() also returns the status of the mouse buttons, so we can also
+check them:
+
+	for(;;)
+	{
+	  mouse.Position();
+	  if(mouse.LB_Dn())		// check for left button down
+	  {
+	    if(mouse.x() > 320 || mouse.y() > 100)
+	      do_something();
+	  }
+	  else
+	    do_something_else();
+	}
+
+This  loop will continuously check to see if the left button  has  been
+pressed.  If the do_something_else() code is slow then there is a  pos-
+sibility  that a button press could be missed since Position()  returns
+the  real-time status of the mouse.  That is, during execution  of  the
+do_something_else()  code,  the mouse button could be pressed  and  re-
+leased and Position() would not capture it. The functions Pressed() and
+Released() are best suited for checking for a button event because they
+will return the button status since the last time they were called. For
+example, this code
+
+	for(;;)
+	{
+	  if(mouse.Pressed(LEFTBUTTON))
+	  {
+	    if(mouse.x() > 320 || mouse.y() > 100)
+	    do_something();
+	  }
+	  else
+	    do_something_else();
+	}
+
+is guaranteed to capture a button press even if the do_something_else()
+code is slow to execute. Since Pressed() and Released() also return the
+cursor position, a separate call to Position() is not necessary.
+
+    In using the mouse,  it is often necessary to know if the cursor is
+located  within a certain area of the screen.  For example,  in a  menu
+interface,  you want to know if the cursor is located on a menu  selec-
+tion  when a mouse button is clicked.  The function InBox()  adds  this
+capability.  The parameters passed describe the upper  left  and  lower
+right corners of the box. The return value is 1 if the cursor is in the
+box, 0 if not. Therefore, the code
+
+	if(mouse.InBox(40,40,100,100))
+
+will  be true if the mouse cursor is in a box with corners (40,40)  and
+(100,100). Like other mouse functions, the coordinates are pixels, even
+if the screen is in text mode.
+
+    In some cases you may want to hide the cursor if it falls inside  a
+certain area.  The mouse driver provides such a function which,  in  my
+opinion, has two drawbacks. Function 10h defines an exclusion window in
+which  the mouse cursor will turn itself off.  However,  the programmer
+must  then manually turn the cursor back on once it is outside the  ex-
+clusion area,  and this requires continuously checking the mouse  posi-
+tion, such as:
+
+	for(;;)
+	{
+	  mouse.Exclude(40,40,100,100);
+	  do_some_processing();
+	  if(!mouse.InBox(40,40,100,100))
+	    mouse.show();
+	}
+
+The  other problem with function 10h is that it only looks at  the  hot
+spot  when checking the cursor's position, so part of the cursor  could
+enter the exclusion area before the hot spot. The whole point of defin-
+ing  an exclusion area is to turn the cursor off if it enters  the  de-
+fined area. The Mouse++ Exclude() function is based on the InBox() fun-
+ction, taking into account the hot spot location,  cursor image  height
+and width, and cursor visibility.
+
+    Finally,  if  your program is performing a time-consuming  task  in
+which mouse input is not needed, you may want to disable the mouse.  If
+the  mouse  is not disabled,  the user might become frustrated  with  a
+mouse  that does not respond, and the event buffer could become  filled
+with useless events. Calling the function Disable() will turn the mouse
+off and disable the interrupt handler. The mouse and interrupt  handler
+are re-enabled with the next call to Enable(),  although the mouse cur-
+sor must be turned on with an explicit call to Show():
+
+	...
+	mouse.Disable();
+	do_some_long_processing();
+	mouse.Enable();
+	mouse.Show();
+	...
+
+-----------------------------------------------------------------------
+
+Mouse Cursors
+
+    Mouse++ currently supports standard text and graphics cursors,  and
+has rudimentary support for ColorGraphicsCursors. The mouse cursor type
+and  shape are set by the function SetCursor().  In graphics mode,  the
+cursor  is initially set to the familiar upper left pointing  arrow  by
+the  mouse driver.  A standard graphics cursor is up to 16x16 pixels in
+size  and moves in single pixel increments.  It is defined by a  screen
+mask  (background),  an overlying cursor mask (foreground),  and a  hot
+spot. Since the cursor is 16x16 pixels, a single-pixel hot spot must be
+defined so that a unique pixel position can be determined for the  cur-
+sor. The hot spot has x and y values with valid ranges of 0 to 15.
+
+    The two masks determine how the screen will appear where the cursor
+is located.  The screen mask is first ANDed with the screen pixels, and
+the  cursor mask is then XORed with the resulting screen.  If a  screen
+mask bit is 0 it will set the underlying screen pixel to 0 (black), and
+if  the screen mask bit is 1 the pixel color will not change.  A cursor
+mask bit of 0 does nothing, and a cursor mask bit of 1 will invert  the
+underlying pixel color.  Since the masks have only values of 1 or 0 for
+each  pixel  location,  but each pixel can have  a  color,  you  cannot
+achieve  complete control of the cursor color using a standard  cursor.
+The  two  basic choices are a black and white cursor where  the  screen
+mask bits are 0,  or a cursor that inverts the screen colors where  the
+screen mask bits are 1.
+
+    Figure 1  shows the default cursor as an example.  The screen  mask
+alone will set the screen pixels to black for the bits that are 0, cre-
+ating a black arrow.  The cursor mask bits that are 1 will then  invert
+the screen color, meaning part of the black arrow will become white. If
+you lay the cursor mask directly over the screen mask,  you will notice
+that  the  screen mask arrow extends one pixel beyond the  cursor  mask
+arrow.  Because a screen mask bit 0 will create a black background  for
+the cursor mask, this has the effect of putting a one pixel black  bor-
+der around the cursor.  The reason for doing this is to make the cursor
+visible  even where the screen background is white.  Making the  screen
+mask  bits all 1's so that the cursor XOR's with the underlying  screen
+is  useful in creating a CAD cursor (such as a "+" or a "x") that  must
+be  one pixel wide.  The best way to get a better understanding of  the
+graphics cursor is to try some out.  cursor.h defines several  graphics
+cursors.
+
+-----------------------------------------------------------------------
+
+	0011111111111111	0000000000000000
+	0001111111111111	0100000000000000
+	0000111111111111	0110000000000000
+	0000011111111111	0111000000000000
+	0000001111111111	0111100000000000
+	0000000111111111	0111110000000000
+	0000000011111111	0111111000000000
+	0000000001111111	0111111100000000
+	0000000000111111	0111111110000000
+	0000000000011111	0111111111000000
+	0000000111111111	0111110000000000
+	0001000011111111	0100011000000000
+	0011000011111111	0000011000000000
+	1111100001111111	0000001100000000
+	1111100001111111	0000001100000000
+	1111110000111111	0000000110000000
+
+	  Screen Mask		  Cursor Mask
+
+Figure 1: Example graphics cursor
+-----------------------------------------------------------------------
+
+    The  graphics mask pair are defined together in a single  array  of
+type unsigned integer.  For clarity,  comment fields were added in cur-
+sor.h to show what the masks will actually produce. This is helpful not
+only in identifying what a cursor looks like, but also in designing new
+cursors.  The GraphicsCursor class constructor is used for declaring  a
+cursor.  It takes as arguments the cursor hot spot,  mask array,  width
+and height. The width and height are the actual pixel dimensions of the
+image.  In Figure 1,  the width is 11 and the height is 16 -  these are
+the  maximum  dimensions of the defined screen mask,  even  though  the
+overall array is 16x16.  An instance of GraphicsCursor can be passed to
+SetCursor() to make it the current cursor.
+
+    SetCursor() can also set the text cursor type and shape.  There are
+two  cursor types in text mode.  The hardware cursor places the  normal
+video  cursor (the cursor normally associated with the keyboard)  under
+the  control of the mouse.  The software cursor is independent  of  the
+video cursor and behaves similarly to the graphics cursor. The software
+cursor is used in most applications so that the user is presented  with
+the  normal video cursor for typing and a mouse cursor for menu  selec-
+tion, etc.  The cursor type - 0 for software, 1 for hardware - is  part
+of the TextCursor class.
+
+    Like the graphics cursor,  the text software cursor also requires a
+screen and cursor mask,  but no hot spot since the cursor always  takes
+up  a  whole character cell,  regardless of where the mouse  cursor  is
+actually positioned in that cell. (If a hardware cursor is implemented,
+the  starting  and ending scan lines for the cursor are required.)  The
+two  masks operate only on a character cell,  not a 16x16 pixel  array.
+Each cell consists of a one-byte character value and a one-byte charac-
+ter attribute (which sets the foreground and background colors), so the
+masks must each be two bytes long.  The upper byte masks the attribute,
+and  the lower byte masks the character.  Like the graphics masks,  the
+screen mask is XORed with the underlying character cell, and the cursor
+mask is ANDed with the resulting value.  The difference is that in text
+mode, both the character value and its color can be changed, whereas in
+graphics mode, the pixel colors cannot be controlled.
+
+    To get a better understanding of what the masks will do, we need to
+look at an example of a screen character:
+
+      6B24h = 0110 1011 0010 0100 b
+              |--- ---- ---------
+              | |   |       |__ character value  (24h)
+              | |   |__________ foreground color (11d)
+              | |______________ background color (6d)
+              |________________ blinking bit (1=blinking)
+
+This  value will display a '$' (24h) with a background color  of  brown
+(6) and a foreground color of lightcyan (11).  With the text cursor, we
+can  mask each bit of the character and attribute,  so not only can  we
+set the mouse cursor character,  but we can also control the foreground
+and background colors (and even blinking).  The cursor masks default to
+a reverse box, which is
+
+	Screen Mask = 77FFh = 0111 0111 1111 1111 b
+	Cursor Mask = 7700h = 0111 0111 0000 0000 b
+
+The first byte of the screen mask,  77h in this example,  is ANDed with
+the  underlying characters attribute.  The first 7h is ANDed  with  the
+background  color  so that all colors but the blinking bit  are  passed
+through.  Masking the blinking bit to 0 will allow the mouse cursor  to
+rest on a blinking character without itself blinking.  The second 7h is
+ANDed  with the foreground color so that those colors are also  passed,
+except  that the high intensity colors will be converted to low  inten-
+sity. The FFh also passes the screen character. In the cursor mask, the
+77h  will invert both the foreground and background colors,  while  the
+00h  creates an "empty" character, which is a character cell  with  no-
+thing in it (a box).
+
+    If  you  want to create a cursor with a  particular  character  and
+color,  you would set the screen mask to 0000h and the cursor  mask  to
+whatever color and character values desired.  For example,
+
+	Screen Mask = 0000h = 0000 0000 0000 0000b
+	Cursor Mask = 0F23h = 0000 1111 0010 0011b
+
+will set the cursor character to a '#' with a background color of black
+and a foreground color of white.  More complex combinations are  possi-
+ble,  such as setting the cursor's foreground color to a constant value
+but allowing the screen's background color to show through.  Again, the
+best  way to understand it is to try it,  and cursor.h defines  several
+text cursors.
+
+    In graphics mode, the mouse driver takes care of drawing the cursor
+and restoring the image under the cursor when it moves. One drawback to
+this  is that you cannot use color cursors in graphics mode  using  the
+mouse driver. You can instead create a color image, manually draw it to
+the screen, and manually restore the underlying image.  This is exactly
+how  the  ColorGraphicsCursors work.  If a CGC is installed  using  the
+SetCursor()  command,  then the special drawing functions will  trigger
+off of the event handler, thereby drawing the cursor whenever the mouse
+moves. CGC cursors are defined just like standard graphics cursors, ex-
+cept that the screen mask is split into the four video bit planes.  See
+cursor.h for examples.
+
+    The color drawing functions in cgc.cpp were written purely in  C++,
+with no assembly language.  The reason for this was to clearly show how
+the  methods work.  The results are that the color cursor image  has  a
+slight flicker, but overall the speed is acceptable.  Also, these func-
+tions do not make any attempt to save and restore the video card state.
+This could be a problem because the drawing functions are triggered  by
+the  mouse event handler and could therefore be activated at any  time,
+even  during another graphics draw.  You can avoid problems by  turning
+the cursor off (using Hide()) before drawing any graphics,  which is  a
+good  idea anyway.  Finally, these functions only support standard  EGA
+and VGA resolutions.
+
+    A  better method is to use your favorite graphics library  to  draw
+the cursor and restore the screen.  This will probably result in better
+speed and might also support higher resolutions such as  SuperVGA/VESA.
+(This approach also solves another drawback of the mouse drivers - they
+also do not support high-res modes.) To implement another graphics  li-
+brary, you need only modify the VideoRead(), VideoWrite(),  and Cursor-
+Write() funtions. An example using the BGI is provided in cgc_bgi.cpp.
+
+-----------------------------------------------------------------------
+
+The Event Handler
+
+    There is another way to capture mouse events. The mouse event hand-
+ler  is  similar to a TSR program in that it can be set up  to  capture
+events in background.  The handler can be set to trigger off any combi-
+nation of mouse events (Table 1),  and can then execute any user  code,
+providing it does not issue a DOS or I/O call.  However, since the main
+program  is suspended during the event handler execution,  the  handler
+code  should  be fast so it does not to noticeably slow down  the  main
+program.  When an event occurs,  certain mouse information is automati-
+cally  placed  in the registers for the handler to  use.  The  function
+Save() can be used to stuff these parameters into the event buffer  for
+later use.  Any event handler routines you write must be declared as an
+interrupt type and terminate with a far return.  The macro  EventExit()
+provides  the proper exit code and should be the last statement in  the
+handler function:
+
+	void interrupt lb_handler()
+	{
+	  mouse.Save();
+	  do_something();
+	  EventExit();
+	}
+
+    You  can then use this function and an event mask to create an  in-
+stance of a MouseEventHandler.  Installing it is accomplished  with the
+function InstallHandler():
+
+	#include "mouse.h"
+
+	void interrupt lb_handler();
+
+	main()
+	{
+	  unsigned char eventmask = LB_PRESSED | LB_RELEASED;
+          MouseEventHandler myHandler(eventmask, lb_handler);
+
+	  if(mouse.Exists())
+	  {
+	    mouse.InstallHandler(myHandler);
+	    mouse.Enable();
+	    mouse.Show();
+	    ...
+	  }
+	}
+
+eventmask determines which mouse events will trigger the event handler.
+In the example above, the handler will execute whenever the left button
+is  pressed or released.  Because the event handler should be  kept  as
+small  as possible,  you normally only want to call Save() for  storing
+the mouse information and then exit.  The MouseEventHandler class  pro-
+vides  such a handler by default if you do not specify a handler  func-
+tion name:
+
+	main()
+	{
+          MouseEventHandler myHandler(LB_PRESSED | LB_RELEASED);
+
+	  if(mouse.Exists())
+	  {
+	    mouse.InstallHandler(myHandler);
+
+         // Here's another way of doing it:
+	 // mouse.InstallHandler(LB_PRESSED | LB_RELEASED);
+
+	    mouse.Enable();
+	    mouse.Show();
+	    ...
+	  }
+	}
+
+There  might be some cases where you want the handler to do more,  such
+as when the program is waiting for user input and not doing much  other
+processing.  In such cases you may want to load different handlers, de-
+pending on what the program is doing.  A more functional handler can be
+loaded for pulldown menus, for instance,  and a bare-bones handler  (or
+none  at all) can be installed in speed critical areas where the  mouse
+has little use.
+
+    The  Save() function called by the event handler stores  the  mouse
+information in a buffer instead of writing it directly into the  class.
+This allows events to be captured even while your program is busy doing
+something else.  (The keyboard has a similar buffer that provides type-
+ahead capability.)  Save() also calls the ColorGraphicsCursor funtions,
+so  if you are using CGC's and also want to define custom  event  hand-
+lers, you will need to consider this.  To get the event information out
+of the buffer, you must call the function GetEvent():
+
+	for(;;)
+	{
+	  mouse.GetEvent();		// get an event from the buffer
+	  if(mouse.LB_Dn())		// check for left button down
+	  {
+	    if(mouse.x() > 320 || mouse.y() > 100)
+	      do_something();
+	  }
+	  else
+	    do_something_else();
+	}
+
+    When using the event handler you also have access to two other fea-
+tures: MultiClick detection and the Repeater.  MultiClicks occur when a
+mouse button is rapidly clicked more than once. You can set up the but-
+tons  for MultiClicks by calling the SetClickThreshold()  function  and
+then check them with the DoubleClick() and MultiClick() functions:
+
+        mouse.SetClickThreshold(250);	// set threshold to 250ms
+
+	for(;;)
+	{
+	  mouse.GetEvent();
+
+	  if(mouse.DoubleClick(LEFTBUTTON))	// check for 2 clicks
+	    do_something();
+
+	  if(mouse.MultiClick(LEFTBUTTON) == 3)	// check for 3 clicks
+	    do_something_else();
+	}
+
+When  using this feature, you should realize that multiple clicks  will
+load  the buffer with several PRESSED and RELEASED events.  The  Multi-
+Click  buffer does not get updated until a call to  GetEvent()  occurs.
+Therefore,  it will take three passes through the loop above  before  a
+triple click shows up. If the do_something() routine for a double click
+clears the mouse buffer,  then the do_something_else() code will  never
+execute because a triple click will never occur.
+
+    The Repeater allows a button to be pressed and held down to  gener-
+ate multiple PRESSED events,  much like the keyboard does.  This  would
+typically be used for a scrollbar routine.  Unlike the MultiClick  fea-
+ture,  the  Repeater  can be set up for  individual  buttons.  Use  the
+SetRepeatRate() function to set up the Repeater,  and then simply check
+for events:
+
+	// This will set the intial delay to 250ms and the repeat rate
+        // to 100ms for the left button:
+
+        mouse.SetRepeatRate(LEFTBUTTON, 250, 100);
+
+	for(;;)
+	{
+	  mouse.GetEvent();
+
+	  if(mouse.LB_Dn())
+	    do_something();
+	}
+
+The mouse class installs the Repeater by hooking it to the system clock
+interrupt which is called every 18ms.
+
+    Properly  used,  event handlers can add a whole new  dimension to a
+mouse  driven interface.  However, there are some pitfalls to avoid. If
+you set the event mask to trigger on mouse movement,  then the  handler
+will execute quite often (every time the mouse is moved) and could  no-
+ticeably  slow program execution during periods of  heavy  computation.
+Reasons  to trigger on movement include updating a motion counter  such
+as in the demo program,  having cursors that dynamically change  depen-
+ding on the cursor position such as in a GUI,  or when using CGC's.  As
+mentioned before, the handler should not issue a DOS, ROM, or I/O call.
+The handler,  like a TSR,  is an interrupt routine that runs while  the
+main DOS program is suspended.  DOS is not a re-entrant operating  sys-
+tem  and issuing such a call will usually crash the system.  Also, some
+standard C library routines make use of these system functions (such as 
+printf()), so often the only way of finding out is by trial and reboot.
+
+-----------------------------------------------------------------------
+	0x01	MOUSE_MOVED
+	0x02	LB_PRESSED
+	0x04	LB_RELEASED
+	0x08	RB_PRESSED
+	0x10	RB_RELEASED
+	0x20	CB_PRESSED
+	0x40	CB_RELEASED
+
+	Table 1: Mouse events
+-----------------------------------------------------------------------
+
+A Demonstration
+
+    demo.cpp  is a demo program that utilizes most of the  mouse  func-
+tions described.  main() installs the event handler,  runs a text  mode
+demo, and a graphics mode demo.  The event mask is FFh which will trig-
+ger the handler on any mouse event. Since that includes mouse movement,
+the default handler that only calls Save() is used to store the parame-
+ters and keep execution time to a minimum.
+
+    Both  demos  (textdemo() and graphicdemo()) call  a  function  that
+draws the screen and another that processes mouse events.  textscreen()
+assumes  a  color video card and draws a screen  with  eight  different
+characters and colors to demonstrate how the cursor masks work.  Notice
+that  the loop that draws the screen actually writes 50 lines of  video
+even though the demo starts out with 25 lines.  A graphical representa-
+tion  of a three-button mouse is drawn to show the cursor position  and
+button status. After calling textscreen(), textdemo() prints the infor-
+mation from the mouse.Info structure to the screen.  The mouse  y-limit
+is  set to full screen (25 lines, which is the default) and the  cursor
+is turned on with Show().  nexttdemo() is the processing loop for  text
+mode  and is called with the name of text cursor structure and a  title
+string.  nexttdemo() is called with several different cursors and  also
+for 43/50 line mode.
+
+    nexttdemo() first sets the text cursor and prints the title string.
+It then runs a loop that process mouse events. A counter that shows the
+mouse position calls x() and y() which read variables that are  contin-
+uously  updated by the event handler via GetEvent().  Button status  is
+also  checked and displayed.  Released() is called to check for a  left
+button release event which will terminate the loop if the cursor is in-
+side the [Next] box at the time of release.  The loop will also be ter-
+minated  if the right button is double-clicked anywhere on the  screen.
+If the center button is double-clicked, the mouse is disabled until any
+keyboard key is pressed.  Pressing the <Shift> key and the left  button
+will  switch video pages (note that the alternate video page lacks  all
+the  functionality of the main page).  Pressing the <Ctrl> key  and the
+left button will set the global flag "done" which exits the rest of the
+text demo and proceeds with the graphics demo.
+
+    graphicdemo()  works  the same way as textdemo().  In  addition  to
+trying several cursors, it also tests different mickey-to-pixel ratios.
+Notice that the ratio of 2 for the jet cursor will cause the cursor  to
+locate  on every fourth pixel as it moves across the  screen.  graphic-
+screen()  paints several background colors as well as black  and  white
+boxes in the center. These boxes demonstrate the use of the cursor bor-
+der created by the screen mask.  A graphical representation of a three-
+button mouse is again drawn to show the cursor position and button sta-
+tus.  nextgdemo()  sets the graphics cursor and  then  processes  mouse
+events,  checking the position and button status.  The last cursor is a
+ColorGraphicsCursor that is 9x39 pixels.
+
+    During  the  graphics demo any multiclick events are  displayed  as
+different colors of the buttons on the screen (up to four).  The center
+button  is  set up as a repeater button, so that holding it  down  will
+generate multiple PRESSED events as well as multiclicks. A right button
+triple-click  will advance to the next cursor,  and <Ctrl>-left  button
+will exit the demo.
+
+-----------------------------------------------------------------------
+
+Supporting SuperVGA/VESA Modes
+
+    As mentioned before,  the mouse driver performs the draw &  restore
+for the graphics cursor as it moves across the screen.  The drivers  do
+not  currently support color cursors or video modes beyond  640x480x16.
+The ColorGraphicsCursor feature of Mouse++ shows how color cursors  can
+be supported by manually drawing the cursor.  This method can be exten-
+ded to higher resolutions by modifying the VideoDraw() and CursorDraw()
+functions.
+
+    If you are using a third party graphics library, the best method of
+supporting color or high-res modes is to simply use the functions  that
+are available in the library for manipulating bit images.  In the  BGI,
+these are getimage() and putimage().  The file cgc_bgi.cpp contains the
+code that uses the BGI to display the cursor.  This approach is  incom-
+plete in that it does not properly mask the cursor at the edges of  the
+screen (to display a partial cursor) nor does it attempt to insure that
+the viewport is set to the entire screen.  The ColorGraphicsCursor con-
+structor  in cgc_bgi.cpp converts the cgc image array to the BGI  image
+format,  after which getimage() and putimage() are used to display  the
+cursor.
+
+    The BGI,  however, also does not support SuperVGA or VESA modes  as
+provided by Borland.  There is a set of VESA BGI drivers available that
+extend the BGI up to 1024x768x256. They are shareware and are available
+from the address listed below.  Using these drivers would allow cursors
+to be displayed in any mode,  but you would still have to take care  of
+masking the image at the screen edges and taking care of the viewport.
+
+BGI VESA Drivers:
+
+ Jordan Powell Hargrave          Internet: jh5y@andrew.cmu.edu
+ 1000 Morewood Ave, Box #3277      Bitnet: jh5y%andrew.cmu.edu@cmccvb
+ Pittsburgh, PA 15213                UUCP: uunet!andrew.cmu.edu!jh5y
+ (412) 268-4488                Compuserve: [72510,1143]
+
+-----------------------------------------------------------------------
+
+The Mouse++ Functions
+
+-----------------------------------------------------------------------
+Mouse::Exists()
+
+Syntax: 	unsigned char Exists(void)
+
+Description:	Returns the value of an internal flag that is set by
+		the Mouse constructor.
+
+Return Value:	1 if a mouse was found, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::Visible()
+
+Syntax: 	unsigned char Visible(void)
+
+Description:	Returns the status of the cursor visibility.
+
+Return Value:	1 if the cursor is visible, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::Buttons()
+
+Syntax: 	unsigned char Buttons(void)
+
+Description:	Returns the number of buttons for the mouse
+
+Return Value:	2 for a 2-button mouse, 3 for a 3-button mouse.
+
+-----------------------------------------------------------------------
+Mouse::Button()
+
+Syntax: 	unsigned char Button(void)
+
+Description:	Returns the status of the mouse buttons and shift keys
+		that is stored internal to the Mouse class. Call
+		Position() before using this function to insure an
+		accurate value, or when using the event handler call
+		GetEvent().
+
+Return Value:	A mask corresponding to the status of the mouse buttons
+		and the shift keys (down=1, up=0):
+		-------------------------------------------------------
+		0x01	Left button
+		0x02	Right button
+		0x04	Center button
+		0x08	Either shift key
+		0x10	Right shift key
+		0x20	Left shift key
+		0x40	Alt key
+		0x80	Ctrl key
+
+-----------------------------------------------------------------------
+Mouse::Enable()
+
+Syntax: 	void Enable(void)
+
+Description:	Enables the mouse. This function must be called before
+		the mouse can be used for the first time, or after a
+		call to Disable(). A separate call to Show() is neces-
+		sary to display the cursor.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::Disable()
+
+Syntax: 	void Disable(void)
+
+Description:	Disables the mouse and hides the cursor. If an event
+		handler has been installed, it is disabled and the
+		event buffer and multi-click buffer are cleared.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::Show()
+
+Syntax: 	void Show(void)
+
+Description:	Turns on the mouse cursor.
+
+Return Value:	None. Sets the internal visible flag to 1.
+
+-----------------------------------------------------------------------
+Mouse::Hide()
+
+Syntax: 	void Hide(void)
+
+Description:	Turns off the mouse cursor. All other mouse functions
+		will continue to operate. You should hide the cursor
+		prior to any screen writes to avoid having the mouse
+		restore an incorrect background.
+
+Return Value:	None. Sets the internal visible flag to 0.
+
+-----------------------------------------------------------------------
+Mouse::Position()
+
+Syntax: 	void Position(void)
+
+Description:	Reads the cursor position and saves the coordinates
+		in internal variables. Use x() & y() to read the inter-
+                nal variables. This function is not intended for use
+                with the event handler.
+
+Return Value:	None. Sets internal class position variables and button
+		status.
+
+-----------------------------------------------------------------------
+Mouse::x()
+
+Syntax: 	int x(void)
+
+Description:	Returns the x-position of the mouse cursor that is
+		stored internal to the Mouse class. Call Position()
+		before using this function to insure an accurate
+		value, or when using the event handler call GetEvent().
+
+Return Value:	An integer that corresponds to the pixel location of
+		the cursor, even if the screen is in text mode.
+
+-----------------------------------------------------------------------
+Mouse::y()
+
+Syntax: 	int y(void)
+
+Description:	Returns the y-position of the mouse cursor that is
+		stored internal to the Mouse class. Call Position()
+		before using this function to insure an accurate
+		value, or when using the event handler call GetEvent().
+
+Return Value:	An integer that corresponds to the pixel location of
+		the cursor, even if the screen is in text mode.
+
+-----------------------------------------------------------------------
+Mouse::Motion()
+
+Syntax: 	void Motion(void)
+
+Description:	Reads the internal motion counters which give the dis-
+		tance (in mickeys) the mouse has moved since the last
+		call to this function, and stores the values in class
+		variables. Use xCount() & yCount() to read these vari-
+		ables. This function is not intended for use with the
+		event handler.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::xCount()
+
+Syntax: 	int xCount(void)
+
+Description:	Returns the distance the mouse has moved in the x-
+		direction. The distance is in mickeys, which may or may
+		not be the same as pixels, depending on the mickey-to-
+		pixel ratio. This function is useful for seeing if the
+		mouse has moved.
+
+Return Value:	An integer that corresponds to the x distance in mic-
+		keys, regardless of screen mode.
+
+-----------------------------------------------------------------------
+Mouse::yCount()
+
+Syntax: 	int yCount(void)
+
+Description:	Returns the distance the mouse has moved in the y-
+		direction. The distance is in mickeys, which may or may
+		not be the same as pixels, depending on the mickey-to-
+		pixel ratio. This function is useful for seeing if the
+		mouse has moved.
+
+Return Value:	An integer that corresponds to the y distance in mic-
+		keys, regardless of screen mode.
+
+-----------------------------------------------------------------------
+Mouse::Move()
+
+Syntax: 	void Move(int x, int y)
+
+Description:	Moves the cursor to a new position. x & y must be
+		pixel coordinates even if the screen is in text mode.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::Pressed()
+
+Syntax: 	int Pressed(int button)
+
+Description:	In manual mode, this checks to see if button has been
+		pressed since the last call to this command. In event
+		driven mode, this checks to see if the current event
+		was triggered by button being pressed. button can be 0
+		(LEFTBUTTON), 1 (RIGHTBUTTON), or 2 (CENTERBUTTON).
+
+Return Value:	1 if button has a pressed event, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::Released()
+
+Syntax:		int Released(int button)
+
+Description:	In manual mode, this checks to see if button has been
+		released since the last call to this command. In event
+		driven mode, this checks to see if the current event
+		was triggered by button being released. button can be 0
+		(LEFTBUTTON), 1 (RIGHTBUTTON), or 2 (CENTERBUTTON).
+
+Return Value:	1 if button has a released event, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::LB_Dn()
+
+Syntax: 	unsigned char LB_Dn(void)
+
+Description:	Returns the status of the left button.
+
+Return Value:	1 if the left button is pressed, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::RB_Dn()
+
+Syntax: 	unsigned char RB_Dn(void)
+
+Description:	Returns the status of the right button.
+
+Return Value:	1 if the right button is pressed, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::CB_Dn()
+
+Syntax: 	unsigned char CB_Dn(void)
+
+Description:	Returns the status of the center button.
+
+Return Value:	1 if the center button is pressed, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::xLimit()
+
+Syntax: 	void xLimit(int min, int max)
+
+Description:	Sets the limit that the cursor can move in the x-
+		direction. min & max must be pixel values even if the
+		screen is in text mode.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::yLimit()
+
+Syntax: 	void yLimit(int min, int max)
+
+Description:	Sets the limit that the cursor can move in the y-
+		direction. min & max must be pixel values even if the
+		screen is in text mode.
+
+Return Value:	None.
+
+
+-----------------------------------------------------------------------
+Mouse::xyLimit()
+
+Syntax: 	void xyLimit(int xmin, int xmax, int ymin, int ymax)
+
+Description:	Sets the limits that the cursor can move in the x- &
+		y-direction. Limits must be pixel values even if the
+		screen is in text mode.
+
+Return Value:	None.
+
+
+-----------------------------------------------------------------------
+Mouse::GetVideoPage(void);
+
+Syntax: 	int GetVideoPage(void)
+
+Description:	Gets the video page number for which the mouse cursor
+		is currently active. This may or may not be the same
+		as the video page that is currently being displayed on
+		the screen.
+
+Return Value:	The number of the mouse cursor's current video page.
+
+-----------------------------------------------------------------------
+Mouse::SetVideoPage(void);
+
+Syntax:		void SetVideoPage(int page);
+
+Description:	Sets the video page for which the mouse cursor will be
+		active. Normally this will be the same as the displayed
+		video page but it does not have to be.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::SetCursor()
+
+Syntax: 	void SetCursor(TextCursor& cursor)
+		void SetCursor(GraphicsCursor& cursor)
+		void SetCursor(ColorGraphicsCursor& cursor)
+
+Description:	Sets the text cursor as described by the TextCursor
+		class or the graphics cursor as described by the
+                GraphicsCursor or ColorGraphicsCursor class.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::MickToPix()
+
+Syntax: 	void MickToPix(int horiz, int vert)
+
+Description:	Sets the mickey-to-pixel ratio. A mickey is a motion
+		signal sent by the mouse and occurs every 1/200th inch
+		for most mice. horiz passes the number of mickeys re-
+		quired for an 8 pixel horizontal movement, and vert
+		passes the number of mickeys required for an 8 pixel
+		vertical movement. The constructor sets these to 8 and
+		16, respectively.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::SetSpeedThreshold()
+
+Syntax: 	void SetSpeedThreshold(unsigned speed)
+
+Defaults:	speed = 64
+
+Description:	Sets the threshold at which the cursor speed doubles.
+		speed is in mickeys-per-second. Supposedly, this func-
+		tion is only available for Logitech mice.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::InBox()
+
+Syntax: 	int InBox(int left, int top, int right, int bottom)
+
+Description:	Checks if the mouse cursor is located within a rec-
+		tangle. Rectangle limits should be in pixels regardless
+		of screen mode.
+
+Return Value:	1 if the cursor is in the rectangle, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::Exclude()
+
+Syntax: 	void Exclude(int left, int top, int right, int bottom)
+
+Description:	Sets up an exclusion area in which the mouse cursor
+		automatically turns itself off. This is not the same as
+		the exclude function that is built into the mouse, and
+		must be continuously called in a loop. Rectangle limits
+		should be in pixels regardless of screen mode.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::SetClickThreshold()
+
+Syntax: 	void SetClickThreshold(unsigned time)
+
+Defaults:	time = 250 (ms)
+
+Description:	Sets the threshold at which sequential clicks are regi-
+		stered as multi-clicks. time is in milliseconds.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::MultiClick()
+
+Syntax: 	int MultiClick(int button)
+
+Description:	Checks for multi-clicks of a button. button can be 0
+		(LEFTBUTTON), 1 (RIGHTBUTTON), or 2 (CENTERBUTTON).
+
+Return Value:	Current number of multi-clicks.
+
+-----------------------------------------------------------------------
+Mouse::DoubleClick()
+
+Syntax: 	int DoubleClick(int button)
+
+Description:	Checks for double-clicks of a button. button can be 0
+		(LEFTBUTTON), 1 (RIGHTBUTTON), or 2 (CENTERBUTTON).
+
+Return Value:	1 if button has been double-clicked, 0 otherwise.
+
+-----------------------------------------------------------------------
+Mouse::ClearClick()
+
+Syntax: 	void ClearClick(int button)
+
+Defaults:	button = 7 (all buttons)
+
+Description:	Resets the multi-click status of button. button can be
+		0 (LEFTBUTTON), 1 (RIGHTBUTTON), or 2 (CENTERBUTTON).
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::SetRepeatRate()
+
+Syntax: 	void SetRepeatRate(unsigned char button,
+                                   unsigned delay, unsigned rate);
+
+Defaults:	button = LEFTBUTTON
+		delay  = 250 (ms)
+                rate   = 150 (ms)
+
+Description:	Sets the threshold at which sequential clicks are regi-
+		stered as multi-clicks. time is in milliseconds and de-
+		faults to 250.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::InstallHandler()
+
+Syntax: 	void InstallHandler(unsigned mask,
+				    void interrupt (*fn)(void))
+Alt. Syntax:	void InstallHandler(MouseEventHandler handler)
+
+Defaults:	fn = MouseHandler()
+
+Description:	Installs an interrupt handler function which is automa-
+		tically run whenever an event occurs that is included
+                in the mask. The mouse driver loads the CPU registers
+                with mouse information before calling the function.
+                Therefore, the first action should be to save this in-
+                formation to an event buffer, which can be accomplished
+                by calling the Save() function. The remaining function
+                code should be kept to a minimum, and the function MUST
+                be terminated with the EventExit() macro. The mask bits
+                are described in Table X. If a function pointer is not
+                passed in the parameter list, then the default handler
+                MouseHandler() will be used.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::Save()
+
+Syntax: 	void Save(int event, int button, int x, int y,
+			  int xcount, int ycount)
+
+Description:	Stores the passed parameters in the event buffer. This
+		should be the first function called from an event hand-
+		ler routine. See the default handler MouseHandler() for
+		details.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::GetEvent()
+
+Syntax: 	void GetEvent(void)
+
+Description:	Gets the next event from the event buffer and loads the
+		parameters into class variables.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::ClearEvent()
+
+Syntax: 	void ClearEvent(void)
+
+Description:	Clears the current event from the internal class varia-
+		bles.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+Mouse::ClearBuffer()
+
+Syntax: 	void ClearBuffer(void)
+
+Description:	Clears the event buffer.
+
+Return Value:	None.
+
+-----------------------------------------------------------------------
+
+References
+1.  Kent Porter, "Mouse Mysteries, Part I: Text", Turbo Technix, Vol. 
+    1, No. 4, pp. 52-67, May/June 1988.
+2.  Kent Porter, "Mouse Mysteries, Part II: Graphics", Turbo Technix, 
+    Vol. 1, No. 5, pp. 42-53, July/August 1988.
+3.  Terry Dettmann, DOS Programmers Reference, Part V: Reference, Mouse 
+    Functions, pp. 717-739, Que, 1989.
+4.  Ralf Brown, Interrupt List, Release 31, July 12, 1992. This is 
+    available in the Public Domain as INTER31A.ZIP, INTER31B.ZIP, and
+    INTER31C.ZIP.

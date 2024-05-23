@@ -1,0 +1,101 @@
+﻿<HTML lang=en dir=ltr xml:lang="en" 
+xmlns="http://www.w3.org/1999/xhtml"><HEAD><TITLE>Kruskal's algorithm</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=utf-8">
+<STYLE type=text/css media=screen,projection>@import url( /skins-1.5/monobook/main.css?7 );
+</STYLE>
+<LINK media=print 
+href="k_alg/commonPrint.css" 
+type=text/css rel=stylesheet><!--[if lt IE 5.5000]><style type="text/css">@import "/skins-1.5/monobook/IE50Fixes.css";</style><![endif]--><!--[if IE 5.5000]><style type="text/css">@import "/skins-1.5/monobook/IE55Fixes.css";</style><![endif]--><!--[if IE 6]>
+<STYLE type=text/css>@import url( /skins-1.5/monobook/IE60Fixes.css );
+</STYLE>
+<![endif]--><!--[if IE 7]><style type="text/css">@import "/skins-1.5/monobook/IE70Fixes.css?1";</style><![endif]--><!--[if lt IE 7]>
+<SCRIPT 
+src="k_alg/IEFixes.js" 
+type=text/javascript></SCRIPT>
+
+<META http-equiv=imagetoolbar content=no><![endif]-->
+<SCRIPT 
+type=text/javascript>var skin = 'monobook';var stylepath = '/skins-1.5';</SCRIPT>
+
+<STYLE type=text/css>@import url( /w/index.php?title=MediaWiki:Common.css&action=raw&ctype=text/css&smaxage=2678400 );
+@import url( /w/index.php?title=MediaWiki:Monobook.css&action=raw&ctype=text/css&smaxage=2678400 );
+@import url( /w/index.php?title=-&action=raw&gen=css&maxage=2678400 );
+</STYLE>
+<!-- Head Scripts -->
+<META content="MSHTML 6.00.2900.2180" name=GENERATOR></HEAD>
+<BODY class="ns-0 ltr">
+<DIV id=globalWrapper>
+<DIV id=column-content>
+<DIV id=content><A id=top name=top></A>
+<DIV id=siteNotice>
+<DIV class=editsection style="FLOAT: right; MARGIN-LEFT: 5px">
+<TABLE cellSpacing=0 cellPadding=5 border=1>
+  <TBODY>
+  <TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_0.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_0.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+<b><i>الگوریتم کراسکل : درخت فراگیر مینیمال</b></i><br><br><br>
+این گراف اصلیه = گراف مثال
+</TD></TR>  
+<TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_1.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_1.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+یال آ-دی و سی-ای کمترین وزن را دارند. اولی به طور رندوم انتخاب شده و فلگ آن، یک میشود
+</TD></TR> 
+ <TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_2.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_2.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+کمترین یال بعدی انتخاب می شود
+</TD></TR> 
+ <TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_3.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_3.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+...و کمترین یال بعدی
+</TD></TR>  
+<TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_4.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_4.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+حال آ-بی و بی-ای کمترین یال بعدی اند.<br> یالهای دی-بی و بی-سی که کمترین یالهای بعدی اند، تشکیل دور میدهند. چون فلگ هر دو راس آنها 1 است
+</TD></TR>
+  <TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_5.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_5.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+یال بعدی  اف-ای است که تشکیل دور می دهد. <br>
+یال دی-ای هم همینطور
+</TD></TR>
+  <TR>
+
+    <TD><IMG 
+      height=168 alt="" 
+      src="k_alg/200px-Kruskal_Algorithm_6.svg.png" 
+      width=200 longDesc=/wiki/Image:Kruskal_Algorithm_6.svg></A></TD>
+    <TD style="FONT-FAMILY: Tahoma, "Arial" align=right>
+یال بعدی ای-جی است که موجب این میشود که فلگ همه ی رئوس ، یک شود ، یعنی حلقه به پایان رسیده و درخت فراگیر مینیمال کامل است
+</TD></TR>
+
+</TBODY></TABLE>
+</BODY></HTML>
